@@ -153,9 +153,14 @@ $lab-report
 
 ### 1. DOCX 处理（docx skill）
 - **优先使用**: docx skill（如果已安装）
+  - 自动检测多个标准路径：
+    - `~/.claude/skills/docx`
+    - `C:\Users\[用户名]\.claude\skills\docx`
+    - `/usr/local/.claude/skills/docx`
   - 提供高级功能：tracked changes、comments、精确的 XML 操作
 - **备选方案**: python-docx 库
   - 基本功能：段落、表格、格式设置
+  - 无需额外安装，直接可用
 
 ### 2. PDF 处理（pdf skill）
 - **pypdf**: PDF 读写、合并、拆分
@@ -171,9 +176,10 @@ $lab-report
 ```bash
 # 安装各 skill（推荐）
 # 将 docx.skill, pdf.skill, xlsx.skill 安装到 ~/.claude/skills/ 目录
+# 支持多个标准路径，系统会自动检测
 
 # 或安装 Python 库（备选）
-pip install python-docx pypdf pdfplumber reportlab pandas openpyxl
+pip install python-docx pypdf pdfplumber reportlab pandas openpyxl requests
 ```
 
 ## 脚本工具
@@ -206,7 +212,11 @@ pip install python-docx pypdf pdfplumber reportlab pandas openpyxl
 - `scripts/format_document.py`：统一文档格式（字体、字号、缩进）
 - `scripts/manage_captions.py`：管理图表题注
 - `scripts/cleanup_spacing.py`：清理多余空行和分页
-- `scripts/rewrite_aigc.py`：降AIGC率文本改写
+- `scripts/rewrite_aigc.py`：**降AIGC率文本改写**，支持外部API调用
+  - `rewrite_text(content, api_config, prompt_num, model)` - 使用API改写文本
+  - `load_api_config(config_path)` - 加载API配置
+  - `create_sample_config()` - 创建示例配置文件
+  - `get_prompt(prompt_num, content)` - 获取提示词（备选方案）
 - `scripts/final_check.py`：最终格式检查
 
 ## 资源文件
@@ -311,6 +321,8 @@ $lab-report
 | 表格超出页面 | 自动调整列宽和字体大小 |
 | 模板格式异常 | 提示用户检查模板文件 |
 | 必填信息缺失 | 提示用户补充学号/姓名/班级 |
+| API配置缺失 | 降级为提示词模式，提供配置示例 |
+| 网络连接失败 | 自动重试，失败后使用备选方案 |
 
 ## 注意事项
 

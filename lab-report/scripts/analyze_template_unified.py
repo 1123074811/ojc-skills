@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-分析实验报告模板，提取关键信息
+分析实验报告模板 - 使用 python-docx
+替代原有的 win32com.client 依赖版本
+提取关键信息：报告名称、章节结构、表格位置、封面字段
 """
 
-import win32com.client
 import os
-import shutil
+import sys
 import re
+from typing import Dict, List, Any
+
+# 添加脚本目录到路径
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+
+from docx_handler import LabReportDocument
 
 
-def analyze_template(template_path):
+def analyze_template(template_path: str) -> Dict[str, Any]:
     """
     分析模板文档，提取关键信息
     
@@ -27,19 +36,15 @@ def analyze_template(template_path):
             'cover_fields': {'学号': '', '姓名': '', '班级': '', '日期': ''}
         }
     """
-    temp_dir = os.path.expanduser('~')
-    temp_docx = os.path.join(temp_dir, 'temp_template.docx')
+    print(f"正在分析模板: {template_path}")
     
-    # 处理中文路径
-    shutil.copy2(template_path, temp_docx)
+    doc = LabReportDocument(template_path)
+    
+    if not doc.open():
+        print("错误: 无法打开模板文档")
+        return {}
     
     try:
-        word = win32com.client.Dispatch('Word.Application')
-        word.Visible = False
-        word.DisplayAlerts = False
-        
-        doc = word.Documents.Open(temp_docx)
-        
         result = {
             'report_name': '',
             'has_cover': False,
@@ -49,10 +54,12 @@ def analyze_template(template_path):
         }
         
         # 提取所有文本
-        full_text = doc.Content.Text
+        full_text = ""
+        if hasattr(doc.doc, 'paragraphs'):
+            for para in doc.doc.paragraphs:
+                full_text += para.text + "\n"
         
         # 1. 识别实验报告名称
-        # 常见模式：文件名中的"实验报告（X）"或文档标题
         report_patterns = [
             r'《(.+?)》实验报告',
             r'实验报告[（(]([一二三四五六七八九十]+)[)）]',
@@ -67,43 +74,17 @@ def analyze_template(template_path):
                 break
         
         # 2. 分析段落结构
-        current_section = None
-        paras_to_delete = []
-        empty_count = 0
-        prev_was_title = False
-        
-        for i, para in enumerate(doc.Paragraphs, 1):
-            text = para.Range.Text.strip()
-            
-            if text == '':
-                empty_count += 1
-                # 如果连续空行超过1个，标记删除
-                if empty_count > 1:
-                    paras_to_delete.append(para)
-            else:
-                if is_title(text):
-                    # 如果当前是标题，且前面有空行，保留1个
-                    if empty_count > 1:
-                        # 删除多余的空行（保留最后1个）
-                        # 从后往前删除，避免索引变化
-                        for j in range(len(paras_to_delete) - 1, len(paras_to_delete) - empty_count, -1):
-                            if j >= 0:
-                                try:
-                                    paras_to_delete[j].Range.Delete()
-                                except:
-                                    pass
-                    empty_count = 0
-                    prev_was_title = True
-                else:
-                    empty_count = 0
-                    prev_was_title = False
+        if hasattr(doc.doc, 'paragraphs'):
+            for para in doc.doc.paragraphs:
+                text = para.text.strip()
+                if not text:
+                    continue
                 
                 # 识别章节标题（如"一、实验目的"）
                 section_match = re.match(r'^([一二三四五六七八九十]+)[、.．]\s*(.+)', text)
                 if section_match:
                     section_title = text
                     result['sections'].append(section_title)
-                    current_section = section_title
                     
                     # 检查是否是表格插入位置（实验结果/测试用例相关章节）
                     if any(keyword in text for keyword in ['实验结果', '测试用例', '测试结果', '实验数据']):
@@ -111,22 +92,13 @@ def analyze_template(template_path):
                             'section': section_title,
                             'headers': None  # 后续根据内容推断
                         })
-        
-        # 执行标记的删除操作
-        for para in paras_to_delete:
-            try:
-                para.Range.Delete()
-            except:
-                pass
-        
-        # 识别封面字段
-        for para in doc.Paragraphs:
-            text = para.Range.Text.strip()
-            if any(keyword in text for keyword in ['学号', '姓名', '班级', '日期', '专业']):
-                result['has_cover'] = True
-                for field in ['学号', '姓名', '班级', '日期', '专业', '课程']:
-                    if field in text:
-                        result['cover_fields'][field] = text
+                
+                # 识别封面字段
+                if any(keyword in text for keyword in ['学号', '姓名', '班级', '日期', '专业']):
+                    result['has_cover'] = True
+                    for field in ['学号', '姓名', '班级', '日期', '专业', '课程']:
+                        if field in text:
+                            result['cover_fields'][field] = text
         
         # 3. 推断表格表头（根据实验类型）
         if result['table_positions']:
@@ -137,7 +109,7 @@ def analyze_template(template_path):
                 "实际结果", "测试结果"
             ]
         
-        doc.Close()
+        doc.close()
         
         print(f"模板分析完成：")
         print(f"  - 报告名称：{result['report_name'] or '未识别'}")
@@ -148,15 +120,12 @@ def analyze_template(template_path):
         return result
         
     except Exception as e:
-        print(f"分析模板时出错：{e}")
-        raise
-    finally:
-        word.Quit()
-        if os.path.exists(temp_docx):
-            os.remove(temp_docx)
+        print(f"分析模板时出错: {e}")
+        doc.close()
+        return {}
 
 
-def extract_report_name_from_filename(filename):
+def extract_report_name_from_filename(filename: str) -> str:
     """
     从文件名中提取实验报告名称
     
@@ -189,14 +158,34 @@ def extract_report_name_from_filename(filename):
     return clean_name
 
 
-if __name__ == '__main__':
-    import sys
+def main():
+    """命令行入口"""
+    import argparse
     
-    if len(sys.argv) < 2:
-        print("用法：python analyze_template.py <template_path>")
+    parser = argparse.ArgumentParser(description='分析实验报告模板工具')
+    parser.add_argument('template_path', help='模板文件路径')
+    parser.add_argument('--output', '-o', help='输出分析结果到JSON文件')
+    
+    args = parser.parse_args()
+    
+    if not os.path.exists(args.template_path):
+        print(f"错误: 模板文件不存在: {args.template_path}")
         sys.exit(1)
     
-    template_path = sys.argv[1]
-    result = analyze_template(template_path)
+    result = analyze_template(args.template_path)
+    
+    if args.output:
+        try:
+            import json
+            with open(args.output, 'w', encoding='utf-8') as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+            print(f"分析结果已保存到: {args.output}")
+        except Exception as e:
+            print(f"保存分析结果失败: {e}")
+    
     print("\n分析结果：")
     print(result)
+
+
+if __name__ == '__main__':
+    main()

@@ -40,7 +40,7 @@ class DocumentProcessor:
         """检查可用的依赖库"""
         # 检查 DOCX
         try:
-            import docx
+            from docx import Document
             self._docx_available = True
             print("[DOCX] python-docx 可用")
         except ImportError:
