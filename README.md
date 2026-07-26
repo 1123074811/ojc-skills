@@ -13,6 +13,7 @@
 | 🧪 **lab-report** | 实验报告自动化 | 模板解析 + 格式固化 + 降 AIGC 改写 |
 | 🧹 **windows-c-drive-cleanup** | C 盘空间管理 | 审计优先 + Junction 迁移 + 环境变量联动 |
 | 🔄 **ai-development-workflow** | 软件开发全流程 | 六阶段决策框架 |
+| 📚 **build-obsidian-study-vault** | 学科知识库构建 | 资料转换 + 去噪 + 分层图谱 + 完整性验收 |
 | 📝 **xiaoxueqi-report-docx** | 小学期实训报告 | 章节结构 + 题注编号 + 占位符清理 |
 
 ---
@@ -115,6 +116,14 @@ C 盘清理最怕两件事：删错东西和迁完软件不能用。技能把"�
 
 ---
 
+## 📚 build-obsidian-study-vault — 学科知识库构建
+
+> 🕸️ 把 PDF、扫描讲义、PPT、DOCX 和图片转换为去噪、可追溯、分层链接的 Obsidian 知识库。
+
+固化了 MinerU/OCR 转换、广告与二维码去噪、根节点—学科—章节—知识点建模、原生全局图谱配置、原资料回查和 Git 交付流程；内置只读审计脚本，检查失效链接、缺失附件、重复标题、空壳知识点、噪声残留、根节点可达性和唯一资料覆盖。
+
+---
+
 ## 📐 技能架构
 
 每个技能由三层组成：
@@ -143,6 +152,11 @@ ojc-skills/
 │   ├── agents/                       # Agent 配置
 │   ├── references/                   # 交付清单 + 开发者画像
 │   └── SKILL.md
+├── 📚 build-obsidian-study-vault/     # 学科资料到 Obsidian 知识库
+│   ├── agents/                       # Agent 配置
+│   ├── references/                   # 结构规范 + 验收清单
+│   ├── scripts/                      # Vault 只读审计与自检
+│   └── SKILL.md
 ├── *.skill                           # 技能安装包
 └── .gitignore
 ```
@@ -168,4 +182,5 @@ ojc-skills/
 | 🧪 lab-report | `python-docx` `pypdf` `pdfplumber` `reportlab` `pandas` `openpyxl` |
 | 🧹 windows-c-drive-cleanup | Windows + PowerShell 7+（`robocopy` / `mklink` 系统内置） |
 | 🔄 ai-development-workflow | Git |
+| 📚 build-obsidian-study-vault | Python 3.10+；MinerU / OCR 按资料类型选用 |
 | 📝 xiaoxueqi-report-docx | 无额外依赖 |

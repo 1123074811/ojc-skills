@@ -1,0 +1,4 @@
+interface:
+  display_name: "构建 Obsidian 学科知识库"
+  short_description: "将讲义资料转为去噪、分层、可验收的 Obsidian 学科知识库"
+  default_prompt: "使用 $build-obsidian-study-vault 将当前目录的课程资料整理成完整、去噪、分层链接的 Obsidian 知识库。"
