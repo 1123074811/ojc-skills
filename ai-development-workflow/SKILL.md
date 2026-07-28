@@ -16,7 +16,7 @@ Move from intent to verified delivery without repeatedly making the user restate
 - Treat “只讨论/不要实现” as a hard phase boundary. Discuss and clarify without editing until the user authorizes implementation.
 - Anchor “全部完成/继续” to the latest active plan, acceptance criteria, and explicitly requested artifacts. Treat old TODOs and wish lists as evidence to assess, not automatic authorization.
 - Continue through safe, authorized work until the requested outcome is complete. Ask only when a missing choice materially changes the result.
-- Prefer root-cause fixes in shared paths over symptom guards at individual callers.
+- For every defect, search the repository for the same cause, affected callers, and equivalent implementations before editing. Decide whether it is isolated or systemic; fix the shared root cause or every affected occurrence, then verify the project no longer contains the same defect instead of patching only the reported location.
 
 ## 1. Establish intent
 
