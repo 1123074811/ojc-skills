@@ -74,5 +74,7 @@ Read `references/delivery-checklists.md` during verification and before delivery
 
 - Lead with the outcome, then list changed areas, verification performed, and any concrete remaining limitation.
 - Before finishing, privately challenge the result: lowest-confidence assumption, biggest omission, likely three-month failure mode, and whether one high-value improvement belongs in scope. Fix in-scope issues; mention only actionable out-of-scope items.
-- When Git delivery is requested, inspect all tracked and untracked changes, ignore or remove only confirmed disposable files, scan for secrets, and group commits by coherent concern.
-- Write clear Chinese commit messages when the user asks for Chinese. Push only when explicitly requested and report the resulting branch/commit or failure.
+- When Git delivery is requested, inspect all tracked and untracked changes, ignore or remove only confirmed disposable files, and scan for secrets.
+- Partition authorized changes by independently reviewable and revertible intent before staging. Keep implementation with its tests, migration, and required documentation; do not split mechanically by file or file type.
+- Create multiple commits when independent concerns exist, in dependency order. Inspect the staged diff before each commit and the remaining worktree after it; do not mix unrelated user changes into any commit.
+- Write clear Chinese commit messages when the user asks for Chinese. Push only when explicitly requested, after all requested commits pass verification, and report the resulting branch and commit sequence or failure.
