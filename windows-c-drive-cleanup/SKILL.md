@@ -1,14 +1,14 @@
 ---
 name: windows-c-drive-cleanup
-description: Windows C盘空间审计与清理/迁移建议。默认只扫描并向用户报告可清理、可迁移和勿动项；仅在用户明确同意具体清单后，才执行清理或目录联接迁移与环境变量配置。用于 C 盘不足、清理缓存、迁移到D/E盘、pagefile、Docker 占空间、AppData 太大等场景。
+description: Windows C盘空间审计（含逐文件夹用途标注）与清理/迁移建议。默认只扫描并向用户报告可清理、可迁移和勿动项；仅在用户明确同意具体清单后，才执行清理或目录联接迁移与环境变量配置。用于 C 盘不足、清理缓存、迁移到D/E盘、pagefile、Docker 占空间、AppData 太大等场景。
 ---
 
 # Windows C 盘清理与迁移
 
 在 **Windows（优先 PowerShell 7+）** 上完成：
 
-1. **审计**：找出 C 盘大户与可清理项（尽量精确到文件/子目录）
-2. **报告建议**：列出可清理、可迁移、勿动项，以及预计释放空间和影响
+1. **审计**：找出 C 盘大户与可清理项（尽量精确到文件/子目录），并给每个子文件夹标注**用途**（作用）与处置分类
+2. **报告建议**：按「容量总览 → 逐文件夹作用表 → 可清理/可迁移/勿动清单」格式输出，附预计释放空间和影响
 3. **等待确认**：用户明确同意具体路径、动作和目标盘后，才执行清理或迁移
 4. **验收**：核对剩余空间、联接状态、关键工具仍可用
 
@@ -120,28 +120,54 @@ Get-PSDrive C,D,E -ErrorAction SilentlyContinue |
 - 容器：`AppData\Local\Docker`、`*.vhdx`
 - 商店/桌面应用：`AppData\Local\Packages\*`
 
+同时检查 `C:\Users` 下的**其他用户配置文件与异常目录**（逐一测大小，往往藏惊喜）：
+
+- 其他用户：`C:\Users\<其他用户名>`（旧账号/中文账号残留）
+- 异常目录：`C:\Users\AppData`（不属于任何 profile，说明有程序把 AppData 写错位置）、`CodexSandboxOffline` 等
+- 系统默认：`Default` / `Default User` / `Public` / `WsiAccount`（通常 ≈0，保留）
+
 ### A3. 大文件
 
 查找 ≥100MB 文件（用户目录 + ProgramData + 自定义目录），按大小排序 Top 50–100。
 
 ### A4. 输出报告格式（给用户）
 
+必须按三部分输出，每张表都带**「作用」列**——用户最看重「这个文件夹是干什么的」（实测反馈）。
+
 ```markdown
 ## C 盘审计
 - 总容量 / 已用 / 剩余
 
-## Top 占用
-| 路径 | 大小 | 类型 | 建议 |
+## C:\ 顶层各文件夹作用
+| 路径 | 大小 | 作用 | 处置 |
 |------|------|------|------|
-| ... | ..GB | 缓存/应用/系统 | 清理/迁移/保留 |
+| C:\Windows | ..GB | 操作系统本体 | ⚠️ 勿动 |
+| C:\pagefile.sys | ..GB | 虚拟内存页面文件 | 🔄 可迁 D |
 
-## 建议动作
-1. 安全清理预计释放：X GB
-2. 可迁移预计释放：Y GB（数据仍在，只是换盘）
-3. 需确认高风险：...
+## 用户目录各子文件夹作用（嵌套下钻，AppData\Local、Roaming 等逐项标注）
+| 路径 | 大小 | 作用 | 处置 |
+...
+
+## 可清理清单（低风险，预计释放 X GB）｜可迁移清单｜勿动清单
+1. 具体路径 + 大小 + 影响说明
 ```
 
-分类标准见 `references/safe-targets.md`。
+- 处置分类只用四种：**🗑️ 可清理 / 🔄 可迁移 / ⚠️ 勿动 / 🧩 卸载决策**。
+- 文件夹用途按 `references/folder-purposes.md` 知识库标注；查不到的注明「未知，需人工判断」，**不要编造用途**。
+- 大小按 A5 的联接排除法测量；junction 项单独标注（其大小不计入 C 盘）。
+
+### A5. 逐文件夹用途标注（folder-purpose inventory）
+
+对 C:\ 顶层、`C:\Users\<user>` 顶层、`AppData\Local`、`AppData\Roaming` 逐项输出「大小 + 作用 + 处置」。
+
+**联接（junction）大小陷阱（实测）**：
+
+- 对**联接路径本身**执行 `Get-ChildItem -Recurse` 会跟随到目标盘，把 D 盘数据误报为 C 占用（例：`AppData\Local\Docker` 是 junction → D:\Docker，直测得到 16.5 GB，实际 C 盘 0）。
+- 度量「真实 C 占用（排除联接）」的可靠方法：`robocopy <src> <dummy> /L /E /XJ /BYTES /NFL /NDL /NJH`，从输出 `Bytes : <total>` 取总数（`/L` 只列出不复制；dummy 目录不会被创建）。
+- 或 .NET 迭代式测量：`[System.IO.Directory]::EnumerateFileSystemEntries` + `[System.IO.File]::GetAttributes` 过滤 `ReparsePoint`，**根路径本身也要先做 ReparsePoint 检查**，否则直接测 junction 根仍会穿透到目标盘。
+- 报告必须列出所有 junction：`Get-Item <path> -Force | Select LinkType,Target`，并注明其数据在目标盘。
+
+脚本 `scripts/scan_c_drive.ps1` 已含「真实 C 占用（robocopy /XJ）」与「其他用户 profile」两节，自动产出上表所需数字。
 
 ---
 
@@ -300,13 +326,17 @@ npm config set cache 'D:\DevCache\npm-cache' --location=user
    - `foreach { ... } | Sort-Object` 在部分版本会解析失败 → 先赋给 `$results = foreach ...` 再管道。  
    - 长拷贝用 `robocopy /E /COPY:DAT /R:1 /W:1 /XJ /MT:8`；exit code **0–7 成功**，≥8 失败。  
    - 清理 Temp 时 skill 任务日志可能被删，改用盘符 free 差值验收。  
+   - **向 `pwsh -File script.ps1 -Param $array` 传数组会按元素拆成多个位置参数而报错**（实测：`A positional parameter cannot be found that accepts argument ...`）。当前会话内改用 `& script.ps1 -Param $array`；跨进程调用则把数组用逗号串成一个字符串参数再拆。
+   - `safe_clean.ps1` 对无权删除的路径会返回 `Status=cleaned` 但 `FreedMB=0`（如非管理员清 `SoftwareDistribution\Download`）→ 以 FreedMB/盘符 free 差值为准，别只看 status。
 4. 不要求管理员时：用户级 junction/env 通常足够；系统 pagefile/部分 Windows 目录需要提升权限。  
 5. 结束后给用户一份简表：做了什么、释放多少、迁到哪里、需要重启哪些程序。  
-6. 本 skill 持久化位置约定：源仓库 `E:\ojc-skills\windows-c-drive-cleanup`；Claude Code 安装为 `~\.claude\skills\windows-c-drive-cleanup` 的目录联接。
+6. 验收表必须包含「保留完好」项（如飞书 `app` 当前版、VS Code 新版扩展、Playwright 新版本仍在），证明只删了旧版本/缓存、没误删当前版本。  
+7. 本 skill 持久化位置约定：源仓库 `E:\ojc-skills\windows-c-drive-cleanup`；Claude Code 安装为 `~\.claude\skills\windows-c-drive-cleanup` 的目录联接，DSH/其他 harness 安装（如 `~\.agents\skills\windows-c-drive-cleanup`）通常也是指向源仓库的目录联接，改源即自动同步。
 
 ## 参考文件
 
 - `references/safe-targets.md` — 清理白名单/黑名单与命令片段  
+- `references/folder-purposes.md` — 常见 Windows 目录的用途（作用）与默认处置分类知识库  
 - `references/migration-map.md` — 迁移映射、env、PATH 注意点  
 - `references/machine-profile-mechrevo.md` — 本机（MECHREVO）已落地配置快照  
 - `scripts/*.ps1` — 可重复执行的审计/清理/迁移/验收脚本  

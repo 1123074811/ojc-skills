@@ -139,4 +139,26 @@ Get-ChildItem -LiteralPath $local -Recurse -Include *.vhdx,*.vhd -File -ErrorAct
   Select-Object -First 20 |
   Format-Table -AutoSize
 
+Write-Host "=== TRUE on-C sizes (robocopy /XJ, junction-excluded) ===" -ForegroundColor Cyan
+function Get-TrueSizeGB([string]$src) {
+  if (-not (Test-Path -LiteralPath $src)) { return 0 }
+  $out = (& robocopy $src (Join-Path $env:TEMP '_robodummy') /L /E /XJ /NFL /NDL /NJH /BYTES /R:0 /W:0) | Out-String
+  $m = [regex]::Match($out, 'Bytes\s*:\s*(\d+)')
+  if ($m.Success) { return [math]::Round([double]$m.Groups[1].Value / 1GB, 2) }
+  return 0
+}
+$trueTargets = @($userProfile, (Join-Path $userProfile 'AppData'), $local, $roaming)
+$trueRows = foreach ($t in $trueTargets) {
+  [PSCustomObject]@{ TrueGB = (Get-TrueSizeGB $t); Path = $t }
+}
+$trueRows | Format-Table -AutoSize
+
+Write-Host "=== Other profiles under C:\Users ===" -ForegroundColor Cyan
+$otherProfiles = Get-ChildItem -LiteralPath 'C:\Users' -Force -Directory -ErrorAction SilentlyContinue |
+  Where-Object { $_.Name -ne $UserName -and $_.Name -notin @('Public', 'Default', 'Default User', 'All Users') }
+$otherRows = foreach ($op in $otherProfiles) {
+  [PSCustomObject]@{ TrueGB = (Get-TrueSizeGB $op.FullName); Path = $op.FullName }
+}
+$otherRows | Sort-Object TrueGB -Descending | Format-Table -AutoSize
+
 Write-Host "Scan complete." -ForegroundColor Green
