@@ -21,6 +21,14 @@ Apply only the sections relevant to the task.
 - Synchronize cross-layer names, types, defaults, validation, and error handling.
 - Avoid unrelated refactors, duplicate helpers, fake data, unsupported constants, and silent fallbacks.
 
+## Root-cause repair
+
+- State the accepted behavior as a positive invariant and identify its authoritative owner.
+- Trace the symptom to the earliest divergence; distinguish a local implementation error from an incorrect shared model, contract, state transition, boundary, migration, or source of truth.
+- Replace faulty owning logic and update affected consumers. Remove session-only branches, inverted flags, duplicate guards, adapters, fallbacks, comments, and tests that existed only to compensate for it.
+- Preserve a bridge only for real released, persisted, or external compatibility, with an explicit reason and removal condition.
+- Verify the invariant, original reproduction, sibling paths, counterexamples, and absence of equivalent faulty logic. Do not weaken assertions or snapshots to make the repair pass.
+
 ## Verification
 
 - Run focused tests, then the relevant build and integration or browser flow.
@@ -41,4 +49,5 @@ Apply only the sections relevant to the task.
 
 - Confirm every acceptance criterion or name the exact blocker.
 - State what changed and what verification actually ran.
+- Describe the accepted result from the final diff and observed state; omit rejected session-only alternatives unless a real removal, migration, safety, compatibility, audit, or user-requested comparison makes them material.
 - Surface only actionable residual risks; do not pad the handoff with speculative feature ideas.

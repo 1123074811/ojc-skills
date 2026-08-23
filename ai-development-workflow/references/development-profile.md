@@ -9,6 +9,7 @@ Use these as defaults only when the current request and repository do not say ot
 - Non-trivial work should begin with repository understanding and an executable plan; write it to a project document only when the user requests it or cross-session continuity materially benefits.
 - Acceptance means the feature is complete across affected layers, compiles or runs, and has been tested—not merely that code was written.
 - Reviews should actively find omissions, obvious bugs, weak error handling, stale files, and opportunities to simplify.
+- When correcting a defect or rejected design, the user prefers reconstructing the correct invariant at its owning layer and removing the wrong model and its compensations, rather than accumulating local guards. Preserve compatibility only when a real baseline contract requires a transition.
 - UI quality includes sensible sizing, no overlap or overflow, robust text wrapping, and real browser verification when available.
 - Production data, formulas, and conclusions need traceable sources. Avoid fake metrics, filler data, unsupported constants, and hard-coded secrets.
 - Git delivery includes tracked and untracked files, `.gitignore`, secret scanning, coherent Chinese commit messages, and pushing only when requested.
